@@ -21,10 +21,10 @@ from calendar import timegm
 from datetime import datetime
 from operator import itemgetter
 
-from ..Dieties.IniParamsDiety import IniParams
-from ..Dieties.IniParamsDiety import iniRange
-from ..Dieties.IniParamsDiety import dtype
-from ..Utils.Printer import Printer as print_console
+from Dieties.IniParamsDiety import IniParams
+from Dieties.IniParamsDiety import iniRange
+from Dieties.IniParamsDiety import dtype
+from Utils.Printer import Printer as print_console
 
 import logging
 
@@ -405,6 +405,7 @@ class Inputs(object):
             IniParams["penman"] = True if IniParams["evapmethod"] == "Penman" else False
 
         # make dt measured in seconds
+        #TODO - kpn - debuggin, why am I loosing temp?
         IniParams["dt"] = IniParams["dt"] * 60
 
         # make sure that the timestep divides into 60 minutes,
@@ -726,7 +727,7 @@ class Inputs(object):
         # each value in each column is appended to a list
         data = defaultdict(list)
 
-        with open(join(inputdir, filename.strip()), "rU") as file_object:
+        with open(join(inputdir, filename.strip()), "r") as file_object:
             reader = csv.DictReader(file_object, dialect="excel")
 
             # set the colnames as the dictionary key 
@@ -739,8 +740,11 @@ class Inputs(object):
                 for k, v in list(row.items()):
                     
                     # if the value is empty '' replace it with a None
-                    if v.strip() in ['', None]:
-                        v = None
+                    try:
+                        if v.strip() in ['', None]:
+                            v = None
+                    except:
+                        print ('fuck')
                     # append the value into the appropriate 
                     # list based on column name k
                     # if there is more than one cl
@@ -763,7 +767,7 @@ class Inputs(object):
         filenames = [filenames] if not isinstance(filenames, list) else filenames
         i = 1
         for filename in filenames:
-            with open(join(inputdir, filename.strip()), "rU") as file_object:
+            with open(join(inputdir, filename.strip()), "r") as file_object:
                 newfile = [row for row in csv.reader(file_object.read().splitlines(), dialect="excel")]
 
             # skip rows    

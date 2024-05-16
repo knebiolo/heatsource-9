@@ -22,7 +22,7 @@ from os.path import join
 from copy import deepcopy
 import csv
 
-from heatsource9.Dieties.IniParamsDiety import IniParams
+from Dieties.IniParamsDiety import IniParams
 
 
 class Output(object):

@@ -15,12 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Heat Source Methods
-from ..Dieties.IniParamsDiety import IniParams
-from ..Dieties.IniParamsDiety import head2var
-from .Inputs import Inputs
-from ..Stream.StreamNode import StreamNode
-from ..Utils.Dictionaries import Interpolator
-from ..Utils.Printer import Printer as print_console
+from Dieties.IniParamsDiety import IniParams
+from Dieties.IniParamsDiety import head2var
+from ModelSetup.Inputs import Inputs
+from Stream.StreamNode import StreamNode
+from Utils.Dictionaries import Interpolator
+from Utils.Printer import Printer as print_console
 
 # Builtin methods
 from builtins import next
@@ -32,6 +32,7 @@ from math import ceil, log, degrees, atan
 from bisect import bisect
 from time import ctime
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,8 @@ class ModelSetup(object):
     """
 
     def __init__(self, model_dir, control_file, run_type=0):
-        self.run_type = run_type
+        #KPN TODO - I changed to 0 for now.
+        self.run_type = 0
         self.reach = {}
         self.ID2km = {}
 
@@ -198,10 +200,15 @@ class ModelSetup(object):
         # Now set the discharge and temperature 
         # boundary condition dictionaries.
 
-        for i in range(len(timelist)):
+        for i in range(len(timelist) - 2):
             time = timelist[i]
-            flow = data[i][0]
-            temp = data[i][1]
+            try:
+                flow = data[i][0]
+                temp = data[i][1]
+            except:
+                print ('fuck')
+                sys.exit()
+            
 
             # Get the flow boundary condition
             if flow == 0 or not flow:
@@ -338,7 +345,7 @@ class ModelSetup(object):
         nodelist = []
 
         if IniParams["inflowsites"] > 0:
-            for time in timelist:
+            for time in timelist[:-1]:
                 line = data.pop(0)
                 # Error checking?! Naw!!
                 c = count()
@@ -407,53 +414,56 @@ class ModelSetup(object):
         tm = count()  # Which datapoint time are we recording
         length = len(timelist)
         for time in timelist:
-            line = data.pop(0)
-            c = count()
-            for cloud, wind, humidity, T_air in line:
-                i = next(c)
-                
-                # Index by kilometer
-                node = self.reach[kms[i]]
-                # Append this node to a list of all nodes which 
-                # have met data
-                if node.km not in self.metDataSites:
-                    self.metDataSites.append(node.km)
-                # Perform some tests for data accuracy and validity
-                if cloud is None:
-                    cloud = 0.0
-                if wind is None:
-                    wind = 0.0
-                if cloud < 0 or cloud > 1:
-                    # Alright in shade-a-lator 
-                    # # TODO zeros should not get a passed in 
-                    # solar only runs, fix
-                    if self.run_type == 1:
+            try:
+                line = data.pop(0)
+                c = count()
+                for cloud, wind, humidity, T_air in line:
+                    i = next(c)
+                    
+                    # Index by kilometer
+                    node = self.reach[kms[i]]
+                    # Append this node to a list of all nodes which 
+                    # have met data
+                    if node.km not in self.metDataSites:
+                        self.metDataSites.append(node.km)
+                    # Perform some tests for data accuracy and validity
+                    if cloud is None:
                         cloud = 0.0
-                    else:
-                        raise Exception(
-                            "Cloudiness (value of '%s' in Meteorological Data) must be greater than zero and less "
-                            "than one." % cloud)
-                        # TODO RM fix this so it gives the km in exception - do for all
-                if humidity < 0 or humidity is None or humidity > 1:
-                    if self.run_type == 1:  # Alright in shade-a-lator
-                        humidity = 0.0
-                    else:
-                        raise Exception(
-                            "Humidity (value of '%s' in Meteorological Data) must be greater than zero and less than "
-                            "one." % humidity)
-                if T_air is None or T_air < -90 or T_air > 58:
-                    if self.run_type == 1:  # Alright in shade-a-lator
-                        T_air = 0.0
-                    else:
-                        raise Exception(
-                            "Air temperature input (value of '%s' in Meteorological Data) outside of world records, "
-                            "-89 to 58 deg C." % T_air)
-                node.metData[time] = cloud, wind, humidity, T_air
-
-            msg = "Reading meteorological data"
-            current = next(tm) + 1
-            logger.info('{0} {1} {2}'.format(msg, current, length))
-            print_console(msg, True, current, length)
+                    if wind is None:
+                        wind = 0.0
+                    if cloud < 0 or cloud > 1:
+                        # Alright in shade-a-lator 
+                        # # TODO zeros should not get a passed in 
+                        # solar only runs, fix
+                        if self.run_type == 1:
+                            cloud = 0.0
+                        else:
+                            raise Exception(
+                                "Cloudiness (value of '%s' in Meteorological Data) must be greater than zero and less "
+                                "than one." % cloud)
+                            # TODO RM fix this so it gives the km in exception - do for all
+                    if humidity < 0 or humidity is None or humidity > 1:
+                        if self.run_type == 1:  # Alright in shade-a-lator
+                            humidity = 0.0
+                        else:
+                            raise Exception(
+                                "Humidity (value of '%s' in Meteorological Data) must be greater than zero and less than "
+                                "one." % humidity)
+                    if T_air is None or T_air < -90 or T_air > 58:
+                        if self.run_type == 1:  # Alright in shade-a-lator
+                            T_air = 0.0
+                        else:
+                            raise Exception(
+                                "Air temperature input (value of '%s' in Meteorological Data) outside of world records, "
+                                "-89 to 58 deg C." % T_air)
+                    node.metData[time] = cloud, wind, humidity, T_air
+    
+                msg = "Reading meteorological data"
+                current = next(tm) + 1
+                logger.info('{0} {1} {2}'.format(msg, current, length))
+                print_console(msg, True, current, length)
+            except:
+                pass
 
         # Flush meteorology: first 24 hours repeated over flush period
         first_day_time = IniParams["modelstart"]
@@ -629,7 +639,11 @@ class ModelSetup(object):
         data = self.get_columnar_data()
 
         # Build a boundary node
-        node = StreamNode(run_type=self.run_type, Q_mb=Q_mb)
+
+        node = StreamNode()
+        node.run_type=0
+        node.Q_mb=Q_mb
+
         # Then set the attributes for everything in the dictionary
         for k, v in list(data.items()):
             setattr(node, k, v[0])
@@ -648,11 +662,15 @@ class ModelSetup(object):
         # kilometer 0.5, for instance, in that case
 
         vars = (IniParams["length"] * 1000) / IniParams["longsample"]
-        num_nodes = int(ceil(round((vars) / self.multiple, 4)))
-        for i in range(0, num_nodes):
+        num_nodes = int(ceil(round((vars/2.) / self.multiple, 4)))
+        for i in range(0, num_nodes - 1):
             node = StreamNode(run_type=self.run_type, Q_mb=Q_mb)
             for k, v in list(data.items()):
-                setattr(node, k, v[i + 1])# Add one to ignore boundary node
+                try:
+                    setattr(node, k, v[i + 1])# Add one to ignore boundary node
+                except:
+                    print ('fuck')
+                    sys.exit()
             self.initialize_node(node)
             self.reach[node.km] = node
             self.ID2km[node.nodeID] = node.km
