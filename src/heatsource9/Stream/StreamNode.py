@@ -341,12 +341,24 @@ class StreamNode(object):
         
         (self.T, self.S1, self.Mix_T_Delta) = Mac
         
+        if abs(self.T - self.T_prev) > 0.25:
+            print ('check calcs - why such a large change?')
+            print ('temp diff:%s'%(round(self.T - self.T_prev,3)))
+            print ('sed T: %s, current T: %s, previous T:%s'%(round(self.T_sed,2),
+                                                            round(self.T,2),
+                                                            round(self.T_prev,2)))
+            print ('at rkm %s at %s'%(self.km,hour))
+            raise Exception()
+            
         self.F_DailySum[1] += self.F_Solar[1]
         self.F_DailySum[4] += self.F_Solar[4]
         
         for i in range(len(self.Solar_Blocked[tran])):
             self.Solar_Blocked[tran][i] += veg_block[i]
         self.Solar_Blocked["diffuse"] += veg_block[-1]
+        
+        # if self.km <= 0.5:
+        #     print ('check')
 
     def calc_heat_boundary_node(self, time, hour, min, sec, JD,
                               JDC, solar_only=False):

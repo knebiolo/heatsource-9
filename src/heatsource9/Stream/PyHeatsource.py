@@ -621,7 +621,7 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
     # SedThermCond units of W/(m *C)
     # SedThermDiff units of cm^2/sec
 
-    SedRhoCp = SedThermCond / SedThermDiff #/ 10000 
+    SedRhoCp = SedThermCond / (SedThermDiff / 10000) 
     # NOTE: SedRhoCp is the product of sediment density and heat capacity
     # since thermal conductivity is defined as 
     # density * heat capacity * diffusivity,
@@ -631,28 +631,65 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
     # Water Variable
     rhow = 1000  #density of water kg / m3
     H2O_HeatCapacity = 4187 #J/(kg *C)
-
+    
+    #TODO - KPN made a proportional response when temperature diff > 1 degree
+    diff = T_sed - T_prev
+    if abs(diff) > 0.5:
+        # The penalty is proportional to how much the difference exceeds the threshold
+        excess = abs(diff) - 0.5
+        # Example proportional penalty: inverse of the excess
+        penalty = 0.5 / (0.5 + excess)**2
+        diff = diff * penalty
+        
     # Conduction flux (positive is heat into stream)
     # units of (W/m2)
-    F_Cond = SedThermCond * (T_sed - T_prev) / (SedDepth / 2) 
+    F_Cond = SedThermCond * diff / (SedDepth / 2) 
     
     # Calculate the conduction flux between deeper alluvium 
     # & substrate conditionally
     Flux_Conduction_Alluvium = SedThermCond * (T_sed - T_alluv) / (SedDepth / 2) if calcalluv else 0.0
 
     # Hyporheic flux (negative is heat into sediment)
-    F_hyp = Q_hyp * rhow * H2O_HeatCapacity * (T_sed - T_prev) / (W_w * dx)
-
+    F_hyp = Q_hyp * rhow * H2O_HeatCapacity * diff / (W_w * dx)
+    
     NetFlux_Sed = F_Solar7 - F_Cond - Flux_Conduction_Alluvium - F_hyp
     try:
         DT_Sed = NetFlux_Sed * dt / (SedDepth * SedRhoCp)
+        # when this screws up it's because NetFlux is out of whack
     except ZeroDivisionError:
         DT_Sed = 0.
     T_sed_new = T_sed + DT_Sed
+    
+    if abs(diff) > 1.: #0.05:
+        print ('large dSed Temp: %s'%(DT_Sed))
+        print ('Net Sediment FLux is:%s'%(NetFlux_Sed))
+        print ('Conduction Flux: %s'%(F_Cond))
+        print ('Hyporheic Flux: %s'%(F_hyp))
+        print ('Solar radiation hitting sediment: %s'%(F_Solar7))
+        print ('Existing Sediment T: %s, previous T: %s, diff: %s'%(round(T_sed,2),
+                                                          round(T_prev,2),
+                                                          round(abs(T_prev - T_sed),2)))
+        print ('Hyporheic Discharge: %s'%(Q_hyp))
+        raise Exception()
+        
+    if T_sed_new < 10:
+        print ('why so low? T: %s'%(T_sed_new))
+    
     if T_sed_new > 50 or T_sed_new < 0:
         msg = "Sediment temperature is {0}. must be bounded in 0<=temp<=50".format(T_sed_new)
         logger.error(msg)
+        print (msg)
+        print ('change in sediment temperature was %s'%(DT_Sed))
+        print ('original sediment temperature was %s'%(T_sed))
         raise Exception() # TODO RM
+        
+    # print ('dSed: %s,Prev T:%s, Sed T.: %s, Hyp Flux:%s, Cond Flux:%s'%(round(DT_Sed,2),
+    #                                         round(T_sed_new,2),
+    #                                         round(T_prev,2),
+    #                                         round(F_hyp,2),
+    #                                         round(F_Cond,2)))
+    
+
 
     #=====================================================
     # Calculate Longwave FLUX
@@ -791,13 +828,14 @@ def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
             numerator += Qitem*Titem
     if numerator and (Q_in > 0):
         T_in = numerator/Q_in
+        
     # This is basically mix_it_up from the VB code
     T_mix = ((Q_in * T_in) + (T_up * Q_up)) / (Q_up + Q_in)
     
     #TODO KPN - commented out because I can't get this to work...
     # Calculate temperature change from mass transfer from hyporheic zone
-    # T_mix = (((T_sed * Q_hyp) + (T_mix * (Q_up + Q_in))) /
-    #          (Q_hyp + Q_up + Q_in))
+    T_mix = (((T_sed * Q_hyp) + (T_mix * (Q_up + Q_in))) /
+              (Q_hyp + Q_up + Q_in))
     
     # Calculate temperature change from accretion inflows
     # Q_hyp is commented out because we are not currently sure if 
@@ -806,8 +844,8 @@ def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
     # from the total discharge (Q_in) somewhere else, which it is not. 
     # We should check this eventually.
     
-    # T_mix = (((Q_accr * T_accr) + (T_mix * (Q_up + Q_in + Q_hyp))) /
-    #          (Q_accr + Q_up + Q_in + Q_hyp))
+    T_mix = (((Q_accr * T_accr) + (T_mix * (Q_up + Q_in + Q_hyp))) /
+              (Q_accr + Q_up + Q_in + Q_hyp))
     
     #TODO KPN remove Q_hyp from equation
     T_mix = (((Q_accr * T_accr) + (T_mix * (Q_up + Q_in))) /
@@ -834,6 +872,16 @@ def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
         
     # if abs(Temp - T_prev) > 0.1:
     #     print ('why so high?')
+    #     print ('temp diff: %s'%(round(Temp - T_prev,3)))
+    #     print ('current temp: %s'%(Temp))
+    #     print ('previous temp: %s'%(T_prev))
+    #     print ('upstream temperature: %s'%(T_up))
+    #     raise Exception()
+        
+    if Temp >= T_up * 1.1 or Temp < 1.1 * T2:
+        print ('much larger temp downstream')
+        raise Exception()
+    
     return Temp, S, T_mix
 
 def calc_heat_fluxes(metData, C_args, d_w, area, P_w, W_w, U, Q_tribs,
@@ -883,7 +931,8 @@ def calc_heat_fluxes(metData, C_args, d_w, area, P_w, W_w, U, Q_tribs,
         # regular node
         else: return solar, diffuse, direct, veg_block, ground, F_Total, Delta_T, Mac
 
-    # if np.any(np.array(solar).astype(np.float32) > 0):
+    # if abs(T_prev - T_sed) > 0.04:
+    #     print ('check calcs')
     #     print ('check solar calcs')
         
     ground = get_ground_fluxes(cloud, wind, humidity, T_air, elevation,

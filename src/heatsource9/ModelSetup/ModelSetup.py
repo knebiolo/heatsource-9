@@ -654,6 +654,8 @@ class ModelSetup(object):
         node.dx = IniParams["longsample"]
         self.reach[node.km] = node
         self.ID2km[node.nodeID] = node.km
+        print (node.km)
+
 
         # Figure out how many nodes we should have downstream. We use
         # math.ceil() because if we end up with a fraction, that means 
@@ -662,15 +664,15 @@ class ModelSetup(object):
         # kilometer 0.5, for instance, in that case
 
         vars = (IniParams["length"] * 1000) / IniParams["longsample"]
-        num_nodes = int(ceil(round((vars/2.) / self.multiple, 4)))
+        num_nodes = int(ceil(round((vars) / self.multiple, 4)))
         for i in range(0, num_nodes - 1):
             node = StreamNode(run_type=self.run_type, Q_mb=Q_mb)
             for k, v in list(data.items()):
-                try:
-                    setattr(node, k, v[i + 1])# Add one to ignore boundary node
-                except:
-                    print ('fuck')
-                    sys.exit()
+                #try:
+                setattr(node, k, v[i + 1])# Add one to ignore boundary node
+                # except:
+                #     print ('fuck')
+                #     sys.exit()
             self.initialize_node(node)
             self.reach[node.km] = node
             self.ID2km[node.nodeID] = node.km
@@ -1355,3 +1357,5 @@ class ModelSetup(object):
                     setattr(node, attr, 0.01)
         node.Q_hyp = 0.0  # Assume zero hyporheic flow unless otherwise calculated
         node.E = 0  # Same for evaporation
+        # if node.km < 5:
+        #     print ('check')
