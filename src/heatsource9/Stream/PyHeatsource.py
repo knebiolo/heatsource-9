@@ -616,7 +616,7 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
                     lc_height, ViewToSky, SedDepth, dx, dt, SedThermCond,
                     SedThermDiff, calcalluv, T_alluv, P_w, W_w, emergent,
                     penman, wind_a, wind_b, calcevap, T_prev, T_sed,
-                    Q_hyp, F_Solar5, F_Solar7):
+                    Q_hyp, F_Solar5, F_Solar7, prev_km, km, next_km):
 
     # SedThermCond units of W/(m *C)
     # SedThermDiff units of cm^2/sec
@@ -634,12 +634,12 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
     
     #TODO - KPN made a proportional response when temperature diff > 1 degree
     diff = T_sed - T_prev
-    if abs(diff) > 0.5:
-        # The penalty is proportional to how much the difference exceeds the threshold
-        excess = abs(diff) - 0.5
-        # Example proportional penalty: inverse of the excess
-        penalty = 0.5 / (0.5 + excess)**2
-        diff = diff * penalty
+    # if abs(diff) > 0.5:
+    #     # The penalty is proportional to how much the difference exceeds the threshold
+    #     excess = abs(diff) - 0.5
+    #     # Example proportional penalty: inverse of the excess
+    #     penalty = 0.5 / (0.5 + excess)**2
+    #     diff = diff * penalty
         
     # Conduction flux (positive is heat into stream)
     # units of (W/m2)
@@ -660,28 +660,44 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
         DT_Sed = 0.
     T_sed_new = T_sed + DT_Sed
     
-    if abs(diff) > 1.: #0.05:
-        print ('large dSed Temp: %s'%(DT_Sed))
-        print ('Net Sediment FLux is:%s'%(NetFlux_Sed))
-        print ('Conduction Flux: %s'%(F_Cond))
-        print ('Hyporheic Flux: %s'%(F_hyp))
-        print ('Solar radiation hitting sediment: %s'%(F_Solar7))
-        print ('Existing Sediment T: %s, previous T: %s, diff: %s'%(round(T_sed,2),
-                                                          round(T_prev,2),
-                                                          round(abs(T_prev - T_sed),2)))
-        print ('Hyporheic Discharge: %s'%(Q_hyp))
-        raise Exception()
+    # if abs(diff) > 0.5: #0.05:
+    #     print ('large dSed Temp: %s'%(DT_Sed))
+    #     print ('Net Sediment FLux is:%s'%(NetFlux_Sed))
+    #     print ('Conduction Flux: %s'%(F_Cond))
+    #     print ('Hyporheic Flux: %s'%(F_hyp))
+    #     print ('Solar radiation hitting sediment: %s'%(F_Solar7))
+    #     print ('Existing Sediment T: %s, previous T: %s, diff: %s'%(round(T_sed,2),
+    #                                                       round(T_prev,2),
+    #                                                       round(abs(T_prev - T_sed),2)))
+    #     print ('Hyporheic Discharge: %s'%(Q_hyp))
+    #     print ('error occurs at rkm %s'%(km))
+    #     raise Exception()
         
-    if T_sed_new < 10:
-        print ('why so low? T: %s'%(T_sed_new))
+    # if T_sed_new < 10:
+    #     print ('why so low? T: %s'%(T_sed_new))
+        
+    # if T_sed_new > 45 or abs(DT_Sed) > 1:
+    #     print ('why is T_Sed_New or the change in DT Sed so high?')
+    #     print ('Sediment T: %s'%(T_sed_new))
+    #     print ('Net Sediment FLux is:%s'%(NetFlux_Sed))
+    #     print ('Conduction Flux: %s'%(F_Cond))
+    #     print ('Hyporheic Flux: %s'%(F_hyp))
+    #     print ('Solar radiation hitting sediment: %s'%(F_Solar7))
+    #     print ('Existing Sediment T: %s, previous T: %s, diff: %s'%(round(T_sed,2),
+    #                                                       round(T_prev,2),
+    #                                                       round(abs(T_prev - T_sed),2)))
+    #     print ('error occurs at rkm %s'%(km))
+    #     print ('Hyporheic Discharge: %s'%(Q_hyp)) 
+    #     raise Exception()
     
-    if T_sed_new > 50 or T_sed_new < 0:
-        msg = "Sediment temperature is {0}. must be bounded in 0<=temp<=50".format(T_sed_new)
-        logger.error(msg)
-        print (msg)
-        print ('change in sediment temperature was %s'%(DT_Sed))
-        print ('original sediment temperature was %s'%(T_sed))
-        raise Exception() # TODO RM
+    # if T_sed_new > 50 or T_sed_new < 0:
+    #     msg = "Sediment temperature is {0}. must be bounded in 0<=temp<=50".format(T_sed_new)
+    #     logger.error(msg)
+    #     print (msg)
+    #     print ('change in sediment temperature was %s'%(DT_Sed))
+    #     print ('original sediment temperature was %s'%(T_sed))
+    #     print ('error occurs at rkm %s'%(km))
+    #     raise Exception() # TODO RM
         
     # print ('dSed: %s,Prev T:%s, Sed T.: %s, Hyp Flux:%s, Cond Flux:%s'%(round(DT_Sed,2),
     #                                         round(T_sed_new,2),
@@ -808,11 +824,12 @@ def get_ground_fluxes(cloud, wind, humidity, T_air, elevation, phi,
 
 def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
                    Delta_T, Disp, S1, S1_value, T0, T1, T2, Q_accr,
-                   T_accr, MixTDelta_dn):
+                   T_accr, MixTDelta_dn, prev_km, km, next_km):
 
     Q_in = 0.0
     T_in = 0.0
     T_up = T0
+    T_down = T2
     numerator = 0.0
     for i in range(len(Q_tup)):
         Qitem = Q_tup[i]
@@ -877,10 +894,14 @@ def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
     #     print ('previous temp: %s'%(T_prev))
     #     print ('upstream temperature: %s'%(T_up))
     #     raise Exception()
-        
-    if Temp >= T_up * 1.1 or Temp < 1.1 * T2:
-        print ('much larger temp downstream')
-        raise Exception()
+    
+    if T_mix != 0.:    
+        if abs(Temp - T_up) > 1.0 or abs(Temp - T_down) > 1.0 or abs(Temp - T_prev) > 0.5 or T_sed > 40:
+            print ('much larger temp upstream %s or downstream %s or change at current'%(prev_km, next_km))
+            print ('simulated T: %s, T mix: %s'%(Temp,T_mix))
+            print ('previous T: %s, adjusted previous T:%s'%(T_up,T0))
+            print ('next T: %s, adjusted next T: %s'%(T_down,T2))
+            raise Exception()
     
     return Temp, S, T_mix
 
@@ -888,7 +909,10 @@ def calc_heat_fluxes(metData, C_args, d_w, area, P_w, W_w, U, Q_tribs,
                    T_tribs, T_prev, T_sed, Q_hyp, T_dn_prev, ShaderList,
                    tran, Disp, hour, JD, daytime, Altitude, Zenith,
                    Q_up_prev, T_up_prev, solar_only, MixTDelta_dn_prev,
-                   heatsource8):
+                   heatsource8, prev_km, km, next_km):
+    
+    if T_sed > 40:
+        print ('why is sediment T so high? %s'%(T_sed))
     
     cloud, wind, humidity, T_air = metData
 
@@ -940,8 +964,10 @@ def calc_heat_fluxes(metData, C_args, d_w, area, P_w, W_w, U, Q_tribs,
                     dt, SedThermCond, SedThermDiff, calcalluv, T_alluv,
                     P_w, W_w, emergent, penman, wind_a, wind_b,
                     calcevap, T_prev, T_sed, Q_hyp, solar[5],
-                    solar[7])
-        
+                    solar[7], prev_km, km, next_km)
+    
+    # ground[0] is 
+    # ground[6] is evaporation
     F_Total =  solar[6] + ground[0] + ground[2] + ground[6] + ground[7]
     
     # Vars are Cp (J/kg *C) and P (kgS/m3)
@@ -958,7 +984,7 @@ def calc_heat_fluxes(metData, C_args, d_w, area, P_w, W_w, U, Q_tribs,
     Mac = calc_maccormick(dt, dx, U, ground[1], T_prev, Q_hyp, Q_tribs,
                          T_tribs, Q_up_prev, Delta_T, Disp, 0, 0.0,
                          T_up_prev, T_prev, T_dn_prev, Q_accr, T_accr,
-                         MixTDelta_dn_prev)
+                         MixTDelta_dn_prev, prev_km, km, next_km)
     # if hour >10 and hour < 14:
     #     print ('check sun flux')
     # Mac includes Temp, S, T_mix

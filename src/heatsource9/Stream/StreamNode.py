@@ -327,7 +327,10 @@ class StreamNode(object):
                                    self.prev_km.T_prev,
                                    solar_only,
                                    self.next_km.Mix_T_Delta,
-                                   IniParams["heatsource8"])
+                                   IniParams["heatsource8"],
+                                   self.prev_km.km,
+                                   self.km,
+                                   self.next_km.km)
         
         (self.F_Conduction,
          self.T_sed,
@@ -341,14 +344,34 @@ class StreamNode(object):
         
         (self.T, self.S1, self.Mix_T_Delta) = Mac
         
-        if abs(self.T - self.T_prev) > 0.25:
-            print ('check calcs - why such a large change?')
-            print ('temp diff:%s'%(round(self.T - self.T_prev,3)))
-            print ('sed T: %s, current T: %s, previous T:%s'%(round(self.T_sed,2),
-                                                            round(self.T,2),
-                                                            round(self.T_prev,2)))
-            print ('at rkm %s at %s'%(self.km,hour))
-            raise Exception()
+        # # ground exports F_Cond, T_sed_new, F_Longwave, F_LW_Atm, F_LW_Stream, F_LW_Veg, F_Evap, F_Conv, E
+        # evap_change = abs(self.F_Evaporation - self.prev_km.F_Evaporation) 
+        
+        # if evap_change > abs(self.F_Evaporation) * 20:
+        #     print ('change in evaporation more than 10 times previous node, check calcs')
+        #     print ('error occured at station %s'%(self.km))
+        #     print ('sed T: %s, current T: %s, previous T:%s'%(round(self.T_sed,2),
+        #                                                     round(self.T,2),
+        #                                                     round(self.T_prev,2)))
+        #     print ('fluxes; conduction: %s, longwave: %s, evaporation: %s, convection: %s'%(round(self.F_Conduction,2),
+        #                                                                                     round(self.F_Longwave,2),
+        #                                                                                     round(self.F_Evaporation,2),
+        #                                                                                     round(self.F_Convection,2)))  
+        #     print ('error occurs at %s'%(hour))
+        #     raise Exception()
+
+            
+        # if abs(self.prev_km.T - self.T_prev) > 1.:# or abs(self.T_prev - self.next_km.T) > 1.25:
+        #     print ('check calcs - why such a large change?')
+        #     print ('temp diff:%s'%(round(self.prev_km.T - self.T_prev,3)))
+        #     print ('previous rkm T:%s'%(self.prev_km.T))
+        #     print ('next krm T: %s'%(self.next_km.T))
+        #     print ('sed T: %s, current T: %s, previous T:%s'%(round(self.T_sed,2),
+        #                                                     round(self.T,2),
+        #                                                     round(self.T_prev,2)))
+        #     print ('at rkm %s at %s'%(self.km,hour))
+        #     print ('error occurs at %s'%(hour))
+        #     raise Exception()
             
         self.F_DailySum[1] += self.F_Solar[1]
         self.F_DailySum[4] += self.F_Solar[4]
@@ -416,7 +439,10 @@ class StreamNode(object):
                                        0.0,
                                        solar_only,
                                        self.next_km.Mix_T_Delta,
-                                       IniParams["heatsource8"])
+                                       IniParams["heatsource8"],
+                                       0,
+                                       self.km,
+                                       self.next_km.km)
         
         (self.F_Conduction, 
          self.T_sed,
@@ -460,7 +486,10 @@ class StreamNode(object):
                                             self.prev_km.T,
                                             self.T, self.next_km.T,
                                             self.Q_in, self.T_in,
-                                            self.next_km.Mix_T_Delta)
+                                            self.next_km.Mix_T_Delta,
+                                            self.prev_km.km,
+                                            self.km,
+                                            self.next_km.km)
         # if abs(self.T - self.prev_km.T) > 0.1:
         #     print ('why so large a change - it is only 25 m')
         #print ('time: %s, km: %s, C: %s'%(time,self.km,self.T))
