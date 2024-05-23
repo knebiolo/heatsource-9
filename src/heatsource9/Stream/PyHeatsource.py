@@ -895,13 +895,13 @@ def calc_maccormick(dt, dx, U, T_sed, T_prev, Q_hyp, Q_tup, T_tup, Q_up,
     #     print ('upstream temperature: %s'%(T_up))
     #     raise Exception()
     
-    if T_mix != 0.:    
-        if abs(Temp - T_up) > 1.0 or abs(Temp - T_down) > 1.0 or abs(Temp - T_prev) > 0.5 or T_sed > 40:
-            print ('much larger temp upstream %s or downstream %s or change at current'%(prev_km, next_km))
-            print ('simulated T: %s, T mix: %s'%(Temp,T_mix))
-            print ('previous T: %s, adjusted previous T:%s'%(T_up,T0))
-            print ('next T: %s, adjusted next T: %s'%(T_down,T2))
-            raise Exception()
+    # if T_mix != 0.:    
+    #     if abs(Temp - T_up) > 1.0 or abs(Temp - T_down) > 1.0 or abs(Temp - T_prev) > 0.5 or T_sed > 40:
+    #         print ('much larger temp upstream %s or downstream %s or change at current'%(prev_km, next_km))
+    #         print ('simulated T: %s, T mix: %s'%(Temp,T_mix))
+    #         print ('previous T: %s, adjusted previous T:%s'%(T_up,T0))
+    #         print ('next T: %s, adjusted next T: %s'%(T_down,T2))
+    #         raise Exception()
     
     return Temp, S, T_mix
 

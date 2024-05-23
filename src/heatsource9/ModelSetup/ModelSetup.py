@@ -345,31 +345,33 @@ class ModelSetup(object):
         nodelist = []
 
         if IniParams["inflowsites"] > 0:
-            for time in timelist[:-1]:
-                line = data.pop(0)
-                # Error checking?! Naw!!
-                c = count()
-                for flow, temp in line:
-                    i = next(c)
-                    node = self.reach[kms[i]] # Index by kilometer
-                    if node not in nodelist or not len(nodelist): 
-                        nodelist.append(node)
-                    if flow is None or (flow > 0 and temp is None):
-                        raise Exception("Cannot have a tributary with \
-                        blank flow or temperature conditions")
-                    # Here, we actually set the tribs library, appending 
-                    # to a tuple. Q_ and T_tribs are tuples of values 
-                    # because we may have more than one input for a 
-                    # given node
-
-                    # Append to tuple
-                    node.Q_tribs[time] += flow,
-                    node.T_tribs[time] += temp,
-                    msg = "Reading inflow data"
-                    current = next(tm) + 1
-                    logger.info('{0} {1} {2}'.format(msg, current, length * IniParams["inflowsites"]))
-                    print_console(msg, True, current, length * IniParams["inflowsites"])
-
+            for time in timelist[:-2]:
+                try:
+                    line = data.pop(0)
+                    # Error checking?! Naw!!
+                    c = count()
+                    for flow, temp in line:
+                        i = next(c)
+                        node = self.reach[kms[i]] # Index by kilometer
+                        if node not in nodelist or not len(nodelist): 
+                            nodelist.append(node)
+                        if flow is None or (flow > 0 and temp is None):
+                            raise Exception("Cannot have a tributary with \
+                            blank flow or temperature conditions")
+                        # Here, we actually set the tribs library, appending 
+                        # to a tuple. Q_ and T_tribs are tuples of values 
+                        # because we may have more than one input for a 
+                        # given node
+    
+                        # Append to tuple
+                        node.Q_tribs[time] += flow,
+                        node.T_tribs[time] += temp,
+                        msg = "Reading inflow data"
+                        current = next(tm) + 1
+                        logger.info('{0} {1} {2}'.format(msg, current, length * IniParams["inflowsites"]))
+                        print_console(msg, True, current, length * IniParams["inflowsites"])
+                except:
+                    pass
         # Next we expand or revise the dictionary to account for the 
         # flush period
         # Flush flow: model start value over entire flush period

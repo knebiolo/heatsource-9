@@ -195,30 +195,30 @@ class ModelControl(object):
 
             # If minute and second are both zero, we are at the top of 
             # the hour. 
-            # if (minute == 0 and second == 0):
-            #     ts = next(cnt) # Number of actual timesteps per tick
+            if (minute == 0 and second == 0):
+                ts = next(cnt) # Number of actual timesteps per tick
                 
-            #     # Number of timesteps in one hour
-            #     hr = 60 / (IniParams["dt"] / 60)
-            #     # This writes a line to the status bar.
-            #     msg = "Timesteps:"
-            #     logger.info('{0} {1} {2}'.format(msg, (ts) * hr, timesteps))
-            #     print_console(msg, True, (ts) * hr, timesteps)
+                # Number of timesteps in one hour
+                hr = 60 / (IniParams["dt"] / 60)
+                # This writes a line to the status bar.
+                msg = "Timesteps:"
+                logger.info('{0} {1} {2}'.format(msg, (ts) * hr, timesteps))
+                print_console(msg, True, (ts) * hr, timesteps)
 
-            #     # Call the Output class to update the textfiles. We call
-            #     # this every hour and store the data, then we write to 
-            #     # file every day. Limiting disk access saves us 
-            #     # considerable time.
-            #     self.Output(time, hour)
+                # Call the Output class to update the textfiles. We call
+                # this every hour and store the data, then we write to 
+                # file every day. Limiting disk access saves us 
+                # considerable time.
+                self.Output(time, hour)
 
             # ---- 
             # Uncomment to output every timestep and 
             # comment section above
-            ts = next(cnt)#.next()
-            msg = "Timesteps:"
-            logger.info('{0} {1} {2}'.format(msg, ts, timesteps))
-            print_console("Timesteps:", True, ts, timesteps)
-            self.Output(time, hour, minute, second)
+            # ts = next(cnt)#.next()
+            # msg = "Timesteps:"
+            # logger.info('{0} {1} {2}'.format(msg, ts, timesteps))
+            # print_console("Timesteps:", True, ts, timesteps)
+            # self.Output(time, hour, minute, second)
             # ---- 
 
             # We've made it through the entire stream without an error, 
